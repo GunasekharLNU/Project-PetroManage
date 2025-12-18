@@ -1,11 +1,11 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import {Layout} from './components/Layout';
-import {Dashboard} from './components/Dashboard';
-import {Assets} from './components/Assets';
-import { Production } from './components/Production';
-import { Compliance } from './components/Compliance';
-import {Analytics} from './components/Analytics';
-import { Maintanance } from './components/Maintanance';
+import {Layout} from './pages/Layout';
+import {Dashboard} from './pages/Dashboard';
+import {Assets} from './pages/Assets';
+import { Production } from './pages/Production';
+import { Compliance } from './pages/Compliance';
+import {Analytics} from './pages/Analytics';
+import { Maintanance } from './pages/Maintanance';
 
 function App() {
   return (
