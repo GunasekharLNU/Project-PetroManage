@@ -62,6 +62,8 @@ const profileData = {
   ]
 };
 
+
+
 export const Profile = () => {
   const p = profileData;
 

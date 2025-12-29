@@ -69,7 +69,7 @@ const handleAddWorkOrder = (newOrder) => {
     <div className="py-4 space-y-6"> {/* <--- This main wrapper MUST be here */}
     
     {/* 1. Header Area with Stylish Gradient Background */}
-    <div className="bg-gradient-to-r from-orange-700 to-orange-900 p-8 rounded-xl shadow-md flex justify-between items-center mb-8">
+    <div className="bg-gradient-to-br from-orange-600 via-orange-700 to-orange-900 p-8 rounded-xl shadow-md flex justify-between items-center mb-8">
       <div className="space-y-1">
         <h1 className="text-3xl font-extrabold text-white tracking-tight">
           Maintenance Management
