@@ -1,11 +1,26 @@
 import { useEffect, useState } from 'react';
 import { Plus, Calendar, TrendingUp, BarChart } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion'; // Added Framer Motion
 import { AvP } from '../components/production components/AvP';
 import { PlansForm } from '../components/production components/PlansForm';
 import { PlansTable } from '../components/production components/PlansTable';
 import { RecordForm } from '../components/production components/RecordForm';
 import { RecordTable } from '../components/production components/RecordTable';
 import PlannedVsActualChart from '../components/production components/PlannedVsActualChart';
+
+// Animation Variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
+
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  show: { y: 0, opacity: 1, transition: { duration: 0.4, ease: "easeOut" } }
+};
 
 const initialPlans = [
   { id: 'PLAN-001', assetId: 'RIG-001', assetName: 'North Sea Rig Alpha', plannedVolume: 5000, unit: 'barrels/day', startDate: '2024-01-01', endDate: '2024-03-31', status: 'Active' },
@@ -33,35 +48,32 @@ export function Production() {
 
   useEffect(() => {
     calculateTotals();
-  })
+  }, [productionPlans, RecordPlans]); // Added dependencies to useEffect
+
   const calculateTotals = () => {
-
-    //Barrel Production
-    const total = RecordPlans.reduce((accumulator, record) => {
-      return accumulator + (record.actualVolume || 0);
-    }, 0);
-
-    //Plan Acivement
+    const total = RecordPlans.reduce((accumulator, record) => accumulator + (record.actualVolume || 0), 0);
     const totalActual = RecordPlans.reduce((sum, rec) => sum + rec.actualVolume, 0);
     const totalPlanned = RecordPlans.reduce((sum, rec) => sum + rec.plannedVolume, 0);
-    console.log(totalPlanned);
-    console.log(totalActual);
-
-
-    const planAchievement = totalPlanned > 0 ? (totalActual / totalPlanned) * 100 : 0;
-
-    // 2. Count Active Plans
+    const achievement = totalPlanned > 0 ? (totalActual / totalPlanned) * 100 : 0;
     const activePlansCount = productionPlans.filter(plan => plan.status === 'Active').length;
 
     setDailyBarrels(total);
-    setplanAchievement(planAchievement);
+    setplanAchievement(achievement);
     setActivePlans(activePlansCount);
   };
 
-
   return (
-    <div className="space-y-6 py-4">
-      <div className="bg-gradient-to-tr from-slate-950 via-emerald-600 to-teal-900 rounded-xl p-8 text-white flex items-center justify-between">
+    <motion.div 
+      className="space-y-6 py-4"
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+    >
+      {/* Header Section */}
+      <motion.div 
+        variants={itemVariants}
+        className="bg-gradient-to-tr from-slate-950 via-emerald-600 to-teal-900 rounded-xl p-8 text-white flex items-center justify-between"
+      >
         <div>
           <h2 className="text-3xl font-bold flex">
             <TrendingUp size={40} />
@@ -72,117 +84,114 @@ export function Production() {
           </p>
         </div>
 
-        <button
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
           onClick={() => setShowAddForm(!showAddForm)}
           className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-700 transition-colors h-fit"
         >
           <Plus size={20} />
           {activeTab === 'plans' ? 'New Plan' : 'Add Record'}
-        </button>
-      </div>
+        </motion.button>
+      </motion.div>
 
+      {/* Stats Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Card 1 */}
-        <div className="bg-gray-900 rounded-xl shadow-lg border border-gray-800 p-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="p-3 bg-gray-600 rounded-lg">
-              <BarChart className="text-white" size={24} />
+        {[
+          { icon: BarChart, val: dailyBarrels.toLocaleString(), label: "Daily Production (barrels)" },
+          { icon: TrendingUp, val: `${planAchievement.toFixed(1)}%`, label: "Plan Achievement" },
+          { icon: Calendar, val: avtivePlans.toLocaleString(), label: "Active Production Plans" }
+        ].map((stat, idx) => (
+          <motion.div 
+            key={idx}
+            variants={itemVariants}
+            whileHover={{ y: -5 }}
+            className="bg-gray-900 rounded-xl shadow-lg border border-gray-800 p-6"
+          >
+            <div className="flex items-center gap-4 mb-4">
+              <div className="p-3 bg-gray-600 rounded-lg">
+                <stat.icon className="text-white" size={24} />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">{stat.val}</p>
+                <p className="text-sm text-gray-400">{stat.label}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-white">
-                {(dailyBarrels || 0).toLocaleString()}
-              </p>
-              <p className="text-sm text-gray-400">Daily Production (barrels)</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 2 */}
-        <div className="bg-gray-900 rounded-xl shadow-lg border border-gray-800 p-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="p-3 bg-gray-600 rounded-lg">
-              <TrendingUp className="text-white" size={24} />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-white">
-                {planAchievement.toLocaleString(undefined, {
-                  minimumFractionDigits: 1,
-                  maximumFractionDigits: 1
-                })}%
-              </p>
-              <p className="text-sm text-gray-400">Plan Achievement</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 3 */}
-        <div className="bg-gray-900 rounded-xl shadow-lg border border-gray-800 p-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="p-3 bg-gray-600 rounded-lg">
-              <Calendar className="text-white" size={24} />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-white">
-                {avtivePlans.toLocaleString()}
-              </p>
-              <p className="text-sm text-gray-400">Active Production Plans</p>
-            </div>
-          </div>
-        </div>
+          </motion.div>
+        ))}
       </div>
 
-      {/* <AvP/> */}
+      {/* Animated Add Form */}
+      <AnimatePresence>
+        {showAddForm && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0, y: -20 }}
+            animate={{ height: 'auto', opacity: 1, y: 0 }}
+            exit={{ height: 0, opacity: 0, y: -20 }}
+            className="bg-slate-100 rounded-lg shadow-sm border border-gray-400 p-6 overflow-hidden"
+          >
+            {activeTab === 'plans' ? (
+              <PlansForm
+                productionPlans={productionPlans}
+                onCancel={() => setShowAddForm(false)}
+                setProductionPlans={setProductionPlans}
+              />
+            ) : (
+              <RecordForm
+                onCancel={() => setShowAddForm(false)}
+              />
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {showAddForm && (
-        <div className="bg-slate-100 rounded-lg shadow-sm border border-gray-400 p-6">
-          {activeTab === 'plans' ? (
-            <PlansForm
-              productionPlans={productionPlans}
-              onCancel={() => setShowAddForm(false)}
-              setProductionPlans={setProductionPlans}
-            />
-          ) : (
-            <RecordForm
-              onCancel={() => setShowAddForm(false)}
-            />
-          )}
-        </div>
-      )}
-
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      {/* Tabs and Table Section */}
+      <motion.div variants={itemVariants} className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="border-b border-gray-200">
           <div className="flex">
-            <button
-              onClick={() => setActiveTab('plans')}
-              className={`px-6 py-3 font-medium text-sm ${activeTab === 'plans'
-                ? 'border-b-2 border-slate-800 text-slate-800'
-                : 'text-gray-600 hover:text-gray-900'
+            {['plans', 'records'].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`relative px-6 py-3 font-medium text-sm transition-colors ${
+                  activeTab === tab ? 'text-slate-800' : 'text-gray-600 hover:text-gray-900'
                 }`}
-            >
-              Production Plans
-            </button>
-            <button
-              onClick={() => setActiveTab('records')}
-              className={`px-6 py-3 font-medium text-sm ${activeTab === 'records'
-                ? 'border-b-2 border-slate-800 text-slate-800'
-                : 'text-gray-600 hover:text-gray-900'
-                }`}
-            >
-              Production Records
-            </button>
+              >
+                {tab === 'plans' ? 'Production Plans' : 'Production Records'}
+                {activeTab === tab && (
+                  <motion.div 
+                    layoutId="activeTab"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-800"
+                  />
+                )}
+              </button>
+            ))}
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          {activeTab === 'plans' ? (
-            <PlansTable productionPlans={productionPlans} setProductionPlans={setProductionPlans} />
-          ) : (
-            <RecordTable RecordPlans={RecordPlans} setRecordPlans={setRecordPlans} />
-          )}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {activeTab === 'plans' ? (
+                <PlansTable productionPlans={productionPlans} setProductionPlans={setProductionPlans} />
+              ) : (
+                <RecordTable RecordPlans={RecordPlans} setRecordPlans={setRecordPlans} />
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
-      </div>
+      </motion.div>
 
-      <PlannedVsActualChart />
-    </div>
+      {/* Chart Section */}
+      <motion.div variants={itemVariants}>
+        <PlannedVsActualChart />
+      </motion.div>
+    </motion.div>
   );
 }
