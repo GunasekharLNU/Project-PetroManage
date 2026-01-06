@@ -23,10 +23,10 @@ const itemVariants = {
 };
 
 const initialPlans = [
-  { id: 'PLAN-001', assetId: 'RIG-001', assetName: 'North Sea Rig Alpha', plannedVolume: 5000, unit: 'barrels/day', startDate: '2024-01-01', endDate: '2024-03-31', status: 'Active' },
-  { id: 'PLAN-002', assetId: 'RIG-002', assetName: 'West Texas Rig Beta', plannedVolume: 4200, unit: 'barrels/day', startDate: '2024-01-01', endDate: '2024-03-31', status: 'Active' },
-  { id: 'PLAN-003', assetId: 'RIG-008', assetName: 'Gulf Platform Echo', plannedVolume: 6500, unit: 'barrels/day', startDate: '2024-01-15', endDate: '2024-04-15', status: 'Active' },
-  { id: 'PLAN-004', assetId: 'STG-012', assetName: 'Storage Facility B', plannedVolume: 150000, unit: 'barrels', startDate: '2024-01-01', endDate: '2024-06-30', status: 'Planned' }
+  { id: 'PLAN-1', assetId: 'RIG-001', assetName: 'North Sea Rig Alpha', plannedVolume: 5000, unit: 'barrels/day', startDate: '2024-01-01', endDate: '2024-03-31', status: 'Active' },
+  { id: 'PLAN-2', assetId: 'RIG-002', assetName: 'West Texas Rig Beta', plannedVolume: 4200, unit: 'barrels/day', startDate: '2024-01-01', endDate: '2024-03-31', status: 'Active' },
+  { id: 'PLAN-3', assetId: 'RIG-008', assetName: 'Gulf Platform Echo', plannedVolume: 6500, unit: 'barrels/day', startDate: '2024-01-15', endDate: '2024-04-15', status: 'Active' },
+  { id: 'PLAN-4', assetId: 'STG-012', assetName: 'Storage Facility B', plannedVolume: 150000, unit: 'barrels', startDate: '2024-01-01', endDate: '2024-06-30', status: 'Planned' }
 ];
 
 const initialRecords = [
@@ -139,6 +139,8 @@ export function Production() {
             ) : (
               <RecordForm
                 onCancel={() => setShowAddForm(false)}
+                setRecordPlans={setRecordPlans}
+                RecordPlans={RecordPlans}
               />
             )}
           </motion.div>

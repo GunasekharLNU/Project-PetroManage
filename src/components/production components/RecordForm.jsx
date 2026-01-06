@@ -1,6 +1,13 @@
 import { useState } from 'react';
 
-export function RecordForm({ onCancel }) {
+export function RecordForm({ onCancel, RecordPlans, setRecordPlans }) {
+  // 1. Asset reference list
+  const assetList = [
+    { id: 'RIG-001', name: 'North Sea Rig Alpha' },
+    { id: 'RIG-002', name: 'West Texas Rig Beta' },
+    { id: 'RIG-008', name: 'Gulf Platform Echo' },
+  ];
+
   const [form, setForm] = useState({
     asset: '',
     unit: 'barrels',
@@ -9,15 +16,34 @@ export function RecordForm({ onCancel }) {
   });
 
   const handleSubmit = () => {
+    // 2. Find the asset name
+    const selectedAsset = assetList.find(a => a.id === form.asset);
+    
+    // 3. Calculation Logic
+    const actual = Number(form.actualVolume);
+    const planned = 5000; // Constant as per your requirement
+    
+    // Calculate variance percentage
+    const diff = actual - planned;
+    const variancePercent = ((diff / planned) * 100).toFixed(1);
+    const varianceString = `${diff >= 0 ? '+' : ''}${variancePercent}%`;
+
     const payload = {
+      id: `REC-${Math.floor(1000 + Math.random() * 9000)}`,
       assetId: form.asset,
-      actualVolume: Number(form.actualVolume),
+      assetName: selectedAsset ? selectedAsset.name : 'Unknown Asset',
+      actualVolume: actual,
+      plannedVolume: planned, // Extra field 1
+      variance: varianceString, // Extra field 2 (e.g., "+3.0%" or "-2.4%")
       unit: form.unit,
       date: form.date
     };
 
+    // 4. Update the parent state
+    setRecordPlans([payload, ...RecordPlans]);
+    
     console.log('Record Payload:', payload);
-    // axios.post('/api/records', payload)
+    onCancel(); // Close form
   };
 
   return (
@@ -28,7 +54,7 @@ export function RecordForm({ onCancel }) {
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Asset */}
+          {/* Asset Selection */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">
               Asset
@@ -37,11 +63,14 @@ export function RecordForm({ onCancel }) {
               value={form.asset}
               onChange={(e) => setForm({ ...form, asset: e.target.value })}
               className="w-full px-4 py-2.5 bg-white border-2 border-gray-100 rounded-lg text-gray-900
-                   focus:border-black focus:ring-0 transition-all appearance-none cursor-pointer"
+                         focus:border-black focus:ring-0 transition-all appearance-none cursor-pointer"
             >
               <option value="">Select Asset</option>
-              <option value="RIG-001">RIG-001 - North Sea Rig Alpha</option>
-              <option value="RIG-002">RIG-002 - West Texas Rig Beta</option>
+              {assetList.map(asset => (
+                <option key={asset.id} value={asset.id}>
+                  {asset.id} - {asset.name}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -56,7 +85,7 @@ export function RecordForm({ onCancel }) {
               value={form.actualVolume}
               onChange={(e) => setForm({ ...form, actualVolume: e.target.value })}
               className="w-full px-4 py-2.5 bg-gray-50 border-2 border-transparent rounded-lg
-                   focus:bg-white focus:border-black focus:ring-0 transition-all"
+                         focus:bg-white focus:border-black focus:ring-0 transition-all"
             />
           </div>
 
@@ -70,7 +99,7 @@ export function RecordForm({ onCancel }) {
               value={form.date}
               onChange={(e) => setForm({ ...form, date: e.target.value })}
               className="w-full px-4 py-2.5 bg-gray-50 border-2 border-transparent rounded-lg
-                   focus:bg-white focus:border-black focus:ring-0 transition-all"
+                         focus:bg-white focus:border-black focus:ring-0 transition-all"
             />
           </div>
 
@@ -83,7 +112,7 @@ export function RecordForm({ onCancel }) {
               value={form.unit}
               onChange={(e) => setForm({ ...form, unit: e.target.value })}
               className="w-full px-4 py-2.5 bg-white border-2 border-gray-100 rounded-lg
-                   focus:border-black focus:ring-0 transition-all appearance-none cursor-pointer"
+                         focus:border-black focus:ring-0 transition-all appearance-none cursor-pointer"
             >
               <option value="barrels">Barrels</option>
               <option value="mcf">MCF (Natural Gas)</option>
