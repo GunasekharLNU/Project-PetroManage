@@ -60,7 +60,7 @@ const ReportForm = ({ onClose, reports, setReports, onLogAction }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     const newId = `CR-${Date.now()}`;
-    
+
     const reportData = {
       ReportID: newId,
       AssetID: formData.asset?.value || "",
@@ -112,7 +112,7 @@ const ReportForm = ({ onClose, reports, setReports, onLogAction }) => {
 
   return (
     <div className="w-full max-w-4xl mx-auto bg-white rounded-2xl sm:rounded-4xl overflow-hidden border border-slate-200 shadow-2xl flex flex-col h-full max-h-[92vh] sm:max-h-[95vh] animate-in fade-in zoom-in duration-300">
-      
+
       {/* Header - Fixed */}
       <div className="bg-slate-900 px-6 py-5 sm:p-8 text-white flex items-center justify-between border-b-4 border-emerald-500 shrink-0">
         <div className="flex items-center gap-4 min-w-0">
@@ -124,8 +124,8 @@ const ReportForm = ({ onClose, reports, setReports, onLogAction }) => {
             <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest truncate">Asset Operations Management</p>
           </div>
         </div>
-        <button 
-          onClick={onClose} 
+        <button
+          onClick={onClose}
           className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all cursor-pointer shrink-0"
           aria-label="Close"
         >
@@ -137,7 +137,7 @@ const ReportForm = ({ onClose, reports, setReports, onLogAction }) => {
       <div className="flex-1 overflow-y-auto p-6 sm:p-10 bg-slate-50/30">
         <form id="report-form" onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-            
+
             {/* Report Type */}
             <div className="space-y-1">
               <label className={labelClasses}>
@@ -250,6 +250,8 @@ const ReportForm = ({ onClose, reports, setReports, onLogAction }) => {
                   selected={formData.nextAuditDate}
                   onChange={handleDateChange}
                   dateFormat="dd MMM yyyy"
+                  // ADD THIS LINE BELOW
+                  minDate={new Date()}
                   popperPlacement="bottom-start"
                   className={`${inputClasses} cursor-pointer`}
                   wrapperClassName="w-full"

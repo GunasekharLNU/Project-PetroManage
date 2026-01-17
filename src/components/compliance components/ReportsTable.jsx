@@ -96,7 +96,7 @@ const ReportsTable = ({ reports, setReports, onLogAction }) => {
       case "csv":
         const csvRows = [
           headers.join(","),
-          ...exportData.map((r) => 
+          ...exportData.map((r) =>
             headers.map((h) => {
               const val = r[h] ?? "-";
               return `"${String(val).replace(/"/g, '""')}"`;
@@ -114,13 +114,13 @@ const ReportsTable = ({ reports, setReports, onLogAction }) => {
         break;
 
       case "pdf":
-        const doc = new jsPDF('l', 'mm', 'a4'); 
+        const doc = new jsPDF('l', 'mm', 'a4');
         doc.setFontSize(16);
         doc.text(exportData.length === 1 ? `Asset Detail: ${exportData[0].AssetName}` : "Compliance Export", 14, 15);
-        
+
         autoTable(doc, {
           startY: 22,
-          head: [headers.map(h => h.replace(/([A-Z])/g, ' $1').trim())], 
+          head: [headers.map(h => h.replace(/([A-Z])/g, ' $1').trim())],
           body: exportData.map((row) => headers.map((h) => row[h]?.toString() ?? "-")),
           styles: { fontSize: 7, cellPadding: 2 },
           headStyles: { fillColor: [15, 23, 42] },
@@ -169,7 +169,7 @@ const ReportsTable = ({ reports, setReports, onLogAction }) => {
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-6 max-w-[1600px] mx-auto font-sans text-slate-900 bg-slate-50 min-h-screen">
-      
+
       {/* --- TOOLBAR --- */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
         <div className="relative group w-full lg:max-w-md">
@@ -224,36 +224,62 @@ const ReportsTable = ({ reports, setReports, onLogAction }) => {
           <table className="w-full text-left border-collapse min-w-[900px]">
             <thead>
               <tr className="bg-slate-50/50 border-b border-slate-200 text-slate-400 text-[10px] font-black uppercase tracking-[0.15em]">
-                <th className="px-8 py-5">Report ID</th>
-                <th className="px-8 py-5">Asset Details</th>
+                {/* Added text-center to every th */}
+                <th className="px-8 py-5 text-center">Report ID</th>
+                <th className="px-8 py-5 text-center">Asset Details</th>
                 <th className="px-8 py-5 text-center">Safety Score</th>
-                <th className="px-8 py-5">Status</th>
-                <th className="px-8 py-5 text-right">Actions</th>
+                <th className="px-8 py-5 text-center">Status</th>
+                {/* Reduced px-20 to px-8 to keep columns balanced, unless you need extra space for the 3 buttons */}
+                <th className="px-8 py-5 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {currentReports.length > 0 ? (
                 currentReports.map((report) => (
                   <tr key={report.ReportID} className="group hover:bg-slate-50/30 transition-colors">
-                    <td className="px-8 py-6 font-bold text-slate-600 text-xs tabular-nums">{report.ReportID}</td>
+                    <td className="px-6 py-6 font-bold text-slate-600 text-xs tabular-nums">{report.ReportID}</td>
                     <td className="px-8 py-6">
                       <div className="flex flex-col">
                         <span className="text-sm font-bold text-slate-800 leading-tight">{report.AssetName}</span>
                       </div>
                     </td>
                     <td className="px-8 py-6 text-center">
-                      <span className="font-black text-slate-700 text-xs bg-slate-100 px-3 py-1 rounded-lg tabular-nums">{report.SafetyScore}%</span>
+                      <span className="inline-flex items-center justify-center w-16 font-black text-slate-700 text-xs bg-slate-100 py-1 rounded-lg tabular-nums">
+                        {report.SafetyScore}%
+                      </span>
                     </td>
                     <td className="px-8 py-6">
-                      <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase border shadow-sm ${report.ComplianceStatus?.toLowerCase().includes('compliant') ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+                      <span className={`inline-flex items-center justify-center w-32 py-1.5 rounded-full text-[9px] font-black uppercase border shadow-sm transition-all ${report.ComplianceStatus?.toLowerCase() === 'compliant'
+                        ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                        : report.ComplianceStatus?.toLowerCase() === 'non-compliant'
+                          ? 'bg-red-50 text-red-600 border-red-100'
+                          : 'bg-amber-50 text-amber-600 border-amber-100'
+                        }`}>
                         {report.ComplianceStatus}
                       </span>
                     </td>
                     <td className="px-8 py-6 text-right">
                       <div className="flex justify-end items-center gap-2 opacity-100 lg:opacity-40 lg:group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => setSelectedReport(report)} className="px-4 py-2.5 rounded-xl text-[9px] font-bold uppercase tracking-widest text-slate-600 bg-slate-50 border border-slate-200 hover:bg-white cursor-pointer">View</button>
-                        <button onClick={() => setEditingReport(report)} className="px-4 py-2.5 rounded-xl text-[9px] font-bold uppercase tracking-widest text-emerald-700 bg-emerald-50 border border-emerald-100 hover:bg-emerald-100 cursor-pointer">Update</button>
-                        <button onClick={() => handleDelete(report.ReportID)} className="px-4 py-2.5 rounded-xl text-[9px] font-bold uppercase tracking-widest text-red-600 bg-red-50 border border-red-100 hover:bg-red-100 cursor-pointer">Delete</button>
+                        <button
+                          onClick={() => setSelectedReport(report)}
+                          className="w-20 py-2.5 rounded-xl text-[9px] font-bold uppercase tracking-widest text-slate-600 bg-slate-50 border border-slate-200 hover:bg-white cursor-pointer transition-colors"
+                        >
+                          View
+                        </button>
+
+                        <button
+                          onClick={() => setEditingReport(report)}
+                          className="w-20 py-2.5 rounded-xl text-[9px] font-bold uppercase tracking-widest text-emerald-700 bg-emerald-50 border border-emerald-100 hover:bg-emerald-100 cursor-pointer transition-colors"
+                        >
+                          Update
+                        </button>
+
+                        <button
+                          onClick={() => handleDelete(report.ReportID)}
+                          className="w-20 py-2.5 rounded-xl text-[9px] font-bold uppercase tracking-widest text-red-600 bg-red-50 border border-red-100 hover:bg-red-100 cursor-pointer transition-colors"
+                        >
+                          Delete
+                        </button>
                       </div>
                     </td>
                   </tr>
