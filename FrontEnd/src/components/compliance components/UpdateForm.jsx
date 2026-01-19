@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 import {
   FaCheckCircle,
   FaUserTie,
@@ -14,11 +15,14 @@ const UpdateForm = ({ onClose, reports, setReports, reportToUpdate, onUpdateSucc
     complianceStatus: "",
   });
 
+  // 1. Initialize and Normalize data for the form state
   useEffect(() => {
     if (reportToUpdate) {
+      const rawStatus = reportToUpdate.complianceStatus || reportToUpdate.ComplianceStatus || "";
       setFormData({
-        safetyScore: reportToUpdate.SafetyScore,
-        complianceStatus: reportToUpdate.ComplianceStatus,
+        safetyScore: reportToUpdate.safetyScore ?? reportToUpdate.SafetyScore ?? "",
+        // Form needs underscores for the <select> values to match Java Enums
+        complianceStatus: rawStatus.toString().toUpperCase().replace(/\s+/g, '_'),
       });
     }
   }, [reportToUpdate]);
@@ -28,31 +32,72 @@ const UpdateForm = ({ onClose, reports, setReports, reportToUpdate, onUpdateSucc
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    let updatedReportObj = null;
 
-    const updatedReports = reports.map((report) => {
-      if (report.ReportID === reportToUpdate.ReportID) {
-        updatedReportObj = {
-          ...report,
-          SafetyScore: Number(formData.safetyScore),
-          ComplianceStatus: formData.complianceStatus,
-          LastUpdated: new Date().toLocaleString("en-GB"),
-        };
-        return updatedReportObj;
-      }
-      return report;
-    });
-
-    setReports(updatedReports);
-    localStorage.setItem("complianceReports", JSON.stringify(updatedReports));
-
-    if (onUpdateSuccess && updatedReportObj) {
-      onUpdateSuccess(updatedReportObj);
+    const id = reportToUpdate?.reportId || reportToUpdate?.ReportID;
+    if (!id) {
+      alert("Error: Missing Report ID");
+      return;
     }
-    onClose();
+
+    // Helper to ensure Enums are UPPERCASE_WITH_UNDERSCORES
+    const formatForEnum = (str) =>
+      str ? str.toString().toUpperCase().replace(/\s+/g, '_').trim() : null;
+
+    // 2. Prepare Payload including existing data to prevent MySQL NULL overwrites
+    const cleanPayload = {
+      reportId: id,
+      // Updated fields
+      safetyScore: Number(formData.safetyScore),
+      complianceStatus: formatForEnum(formData.complianceStatus),
+
+      // Preservation fields (Inspector, Dates, Asset info)
+      inspector: reportToUpdate.inspector || reportToUpdate.Inspector,
+      nextAuditDate: reportToUpdate.nextAuditDate || reportToUpdate.NextAuditDate,
+      generatedDate: reportToUpdate.generatedDate || reportToUpdate.GeneratedDate,
+      assetName: reportToUpdate.assetName || reportToUpdate.AssetName,
+
+      // Sanitize ReportType Enum (Prevents the "Safety Compliance" parse error)
+      reportType: formatForEnum(reportToUpdate.reportType || reportToUpdate.ReportType),
+
+      // Include nested asset if available
+      asset: reportToUpdate.asset || null
+    };
+
+    try {
+      const url = `http://localhost:8080/api/compliance-reports/${id}`;
+      const response = await axios.put(url, cleanPayload);
+
+      if (response.status === 200 || response.status === 204) {
+        // 3. Update Local UI state (removed localStorage as requested)
+        if (reports && Array.isArray(reports)) {
+          const updatedReports = reports.map((report) => {
+            const currentId = report.reportId || report.ReportID;
+            if (currentId === id) {
+              return {
+                ...report,
+                SafetyScore: Number(formData.safetyScore),
+                ComplianceStatus: cleanPayload.complianceStatus,
+                LastUpdated: new Date().toLocaleString("en-GB"),
+              };
+            }
+            return report;
+          });
+          setReports(updatedReports);
+        }
+
+        if (onUpdateSuccess) onUpdateSuccess(cleanPayload);
+        onClose();
+      }
+    } catch (error) {
+      console.error("Payload causing error:", cleanPayload);
+      const errorMsg = error.response?.data?.message || "Check Java console for Enum mapping errors.";
+      alert(`Update Failed: ${errorMsg}`);
+    }
   };
+
+  if (!reportToUpdate) return null;
 
   // Shared Responsive Tailwind Classes
   const labelClasses = "flex items-center gap-2 text-[10px] sm:text-[11px] font-black uppercase tracking-widest mb-2 transition-all";
@@ -71,14 +116,11 @@ const UpdateForm = ({ onClose, reports, setReports, reportToUpdate, onUpdateSucc
           <div className="min-w-0">
             <h2 className="text-lg sm:text-2xl font-black tracking-tighter truncate">Update Metrics</h2>
             <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest truncate">
-              ID: <span className="text-amber-400">{reportToUpdate?.ReportID}</span>
+              ID: <span className="text-amber-400">{reportToUpdate?.reportId || reportToUpdate?.ReportID}</span>
             </p>
           </div>
         </div>
-        <button
-          onClick={onClose}
-          className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all cursor-pointer shrink-0"
-        >
+        <button onClick={onClose} className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all cursor-pointer shrink-0">
           <FaTimes className="text-xl" />
         </button>
       </div>
@@ -94,7 +136,7 @@ const UpdateForm = ({ onClose, reports, setReports, reportToUpdate, onUpdateSucc
               <label className={`${labelClasses} text-slate-400`}>
                 <FaLock className="opacity-50" /> Asset Name
               </label>
-              <input type="text" disabled value={reportToUpdate?.AssetName || ""} className={disabledClasses} />
+              <input type="text" disabled value={reportToUpdate?.assetName || reportToUpdate?.AssetName || ""} className={disabledClasses} />
             </div>
 
             {/* Report Type - Read Only */}
@@ -102,7 +144,7 @@ const UpdateForm = ({ onClose, reports, setReports, reportToUpdate, onUpdateSucc
               <label className={`${labelClasses} text-slate-400`}>
                 <FaLock className="opacity-50" /> Report Type
               </label>
-              <input type="text" disabled value={reportToUpdate?.ReportType || ""} className={disabledClasses} />
+              <input type="text" disabled value={reportToUpdate?.reportType || reportToUpdate?.ReportType || ""} className={disabledClasses} />
             </div>
 
             {/* Safety Score - EDITABLE */}
@@ -137,9 +179,9 @@ const UpdateForm = ({ onClose, reports, setReports, reportToUpdate, onUpdateSucc
                   className={`${editableClasses} appearance-none pr-10`}
                   required
                 >
-                  <option value="Compliant">Compliant</option>
-                  <option value="Non-Compliant">Non-Compliant</option>
-                  <option value="Pending Review">Pending Review</option>
+                  <option value="COMPLIANT">Compliant</option>
+                  <option value="NON_COMPLIANT">Non-Compliant</option>
+                  <option value="PENDING_REVIEW">Pending Review</option>
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -154,7 +196,7 @@ const UpdateForm = ({ onClose, reports, setReports, reportToUpdate, onUpdateSucc
               <label className={`${labelClasses} text-slate-400`}>
                 <FaUserTie className="opacity-50" /> Original Inspector
               </label>
-              <input type="text" disabled value={reportToUpdate?.Inspector || ""} className={disabledClasses} />
+              <input type="text" disabled value={reportToUpdate?.inspector || reportToUpdate?.Inspector || "N/A"} className={disabledClasses} />
             </div>
 
             {/* Next Audit - Read Only */}
@@ -162,7 +204,7 @@ const UpdateForm = ({ onClose, reports, setReports, reportToUpdate, onUpdateSucc
               <label className={`${labelClasses} text-slate-400`}>
                 <FaCalendarAlt className="opacity-50" /> Next Audit Date
               </label>
-              <input type="text" disabled value={reportToUpdate?.NextAuditDate || ""} className={disabledClasses} />
+              <input type="text" disabled value={reportToUpdate?.nextAuditDate || reportToUpdate?.NextAuditDate || "N/A"} className={disabledClasses} />
             </div>
 
           </div>

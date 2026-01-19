@@ -1,8 +1,10 @@
 package com.example.Backend.compliance.service;
 
 import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
 import com.example.Backend.compliance.entity.ComplianceReport;
 import com.example.Backend.compliance.repository.ComplianceReportRepository;
 
@@ -31,15 +33,15 @@ public class ComplianceReportService {
 
     // UPDATE REPORT DATA
     // Logic inside ComplianceReportService.java
-public ComplianceReport updateReport(Long id, ComplianceReport reportDetails) {
-    ComplianceReport existing = repository.findById(id)
-        .orElseThrow(() -> new RuntimeException("Report not found"));
-        
-    // Manual mapping ensures we don't accidentally overwrite the Asset relation
-    existing.setSafetyScore(reportDetails.getSafetyScore());
-    existing.setComplianceStatus(reportDetails.getComplianceStatus());
-    
-    return repository.save(existing);
+public ComplianceReport updateReport(Long id, ComplianceReport details) {
+    return repository.findById(id).map(report -> {
+        report.setComplianceStatus(details.getComplianceStatus());
+        report.setSafetyScore(details.getSafetyScore());
+        report.setInspector(details.getInspector());
+        report.setNextAuditDate(details.getNextAuditDate());
+        // Add any other fields you want to allow updates for
+        return repository.save(report);
+    }).orElseThrow(() -> new RuntimeException("Report not found with id " + id));
 }
 
     // DELETE REPORT
