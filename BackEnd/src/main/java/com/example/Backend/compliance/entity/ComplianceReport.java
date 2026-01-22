@@ -29,7 +29,7 @@ public class ComplianceReport {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long reportId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "asset_id", nullable = false)
     private Asset asset;
 
