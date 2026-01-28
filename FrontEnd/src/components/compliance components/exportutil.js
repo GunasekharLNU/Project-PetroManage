@@ -2,29 +2,45 @@ import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-/**
- * Handles cross-format data exporting
- * @param {Array} data - The array of log objects
- * @param {string} format - 'json' | 'csv' | 'excel' | 'pdf'
- */
-export const handleExport = (data, format) => {
-    if (!data || data.length === 0) {
+export const handleExport = (format, data) => {
+    if (!data || !Array.isArray(data) || data.length === 0) {
         alert("No data available to export");
         return;
     }
 
-    const fileName = `Audit_Report_${new Date().toISOString().split('T')[0]}`;
-    const headers = ["Report ID", "Action", "User", "Old Value", "New Value", "Timestamp"];
+    const fileName = `Export_${new Date().toISOString().split('T')[0]}`;
+    const isAuditLog = data[0].hasOwnProperty('action');
 
-    // Format for table-based exports
-    const rows = data.map(l => [
-        l.ReportID || "N/A",
-        l.Action || "N/A",
-        l.User || "System",
-        l.OldValue || "—",
-        l.NewValue || "—",
-        l.Timestamp || ""
-    ]);
+    let headers = [];
+    let rows = [];
+
+    if (isAuditLog) {
+        headers = ["Report ID", "Action", "User", "Old Value", "New Value", "Timestamp"];
+        rows = data.map(l => [
+            l.reportIdDisplay || "—",
+            l.action || "UPDATE",
+            l.user || "System",
+            l.oldValue || "—",
+            l.newValue || "—",
+            l.timestamp || ""
+        ]);
+    } else {
+        // 1. EXPANDED HEADERS: Added Inspector, Next Audit, Generated, and Last Updated
+        headers = ["ID", "Asset", "Type", "Score", "Status", "Inspector", "Next Audit", "Generated", "Last Updated"];
+
+        rows = data.map(r => [
+            r.reportId || "—",
+            r.assetName || "—",
+            r.reportType?.replace(/_/g, ' ') || "—",
+            `${r.safetyScore}%`,
+            r.complianceStatus || "—",
+            r.inspector || "—",
+            r.nextAuditDate || "—",
+            r.generatedDate || "—",
+            // 2. DATE FORMATTING: Splitting the ISO string at 'T' to get only YYYY-MM-DD
+            r.lastUpdatedDate ? r.lastUpdatedDate.split('T')[0] : "—"
+        ]);
+    }
 
     switch (format) {
         case "json":
@@ -34,40 +50,55 @@ export const handleExport = (data, format) => {
             link.href = url;
             link.download = `${fileName}.json`;
             link.click();
+            URL.revokeObjectURL(url);
             break;
 
         case "csv":
-            const wsCsv = XLSX.utils.json_to_sheet(data);
-            const csv = XLSX.utils.sheet_to_csv(wsCsv);
-            const csvBlob = new Blob([csv], { type: "text/csv" });
-            const csvUrl = URL.createObjectURL(csvBlob);
-            const csvLink = document.createElement("a");
-            csvLink.href = csvUrl;
-            csvLink.download = `${fileName}.csv`;
-            csvLink.click();
-            break;
-
         case "excel":
-            const wsXlsx = XLSX.utils.json_to_sheet(data);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, wsXlsx, "Audit Trail");
-            XLSX.writeFile(wb, `${fileName}.xlsx`);
+            // 3. CLEANING DATA FOR EXCEL/CSV: 
+            // We map the data to format the date before XLSX conversion
+            const cleanedData = data.map(item => ({
+                ...item,
+                lastUpdatedDate: item.lastUpdatedDate ? item.lastUpdatedDate.split('T')[0] : "—"
+            }));
+            const ws = XLSX.utils.json_to_sheet(cleanedData);
+            if (format === "csv") {
+                const csv = XLSX.utils.sheet_to_csv(ws);
+                const csvBlob = new Blob([csv], { type: "text/csv" });
+                const csvUrl = URL.createObjectURL(csvBlob);
+                const csvLink = document.createElement("a");
+                csvLink.href = csvUrl;
+                csvLink.download = `${fileName}.csv`;
+                csvLink.click();
+            } else {
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Reports");
+                XLSX.writeFile(wb, `${fileName}.xlsx`);
+            }
             break;
 
         case "pdf":
             const doc = new jsPDF("l", "mm", "a4");
-            doc.text("System Audit History", 14, 15);
+            doc.setFontSize(16);
+            doc.text(isAuditLog ? "System Audit History" : "Compliance Reports", 14, 15);
+
             autoTable(doc, {
                 head: [headers],
                 body: rows,
                 startY: 20,
-                styles: { fontSize: 8 },
-                headStyles: { fillColor: [15, 23, 42] }
+                // 4. COLUMN WIDTH TUNING: Ensures 9 columns fit on A4 Landscape
+                styles: { fontSize: 7, cellPadding: 2 },
+                headStyles: { fillColor: [15, 23, 42] },
+                columnStyles: {
+                    1: { cellWidth: 40 }, // Asset Name needs more space
+                    2: { cellWidth: 35 }  // Type needs more space
+                }
             });
+
             doc.save(`${fileName}.pdf`);
             break;
 
         default:
-            console.warn("Unsupported export format");
+            console.warn("Unsupported format:", format);
     }
 };

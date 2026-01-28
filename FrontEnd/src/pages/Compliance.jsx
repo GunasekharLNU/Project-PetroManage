@@ -1,16 +1,14 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { FileCheck, Plus } from "lucide-react";
-import { FaHistory, FaPlus } from "react-icons/fa"; // Fixed FaPlus import
+import React, { useState, useEffect } from "react";
+import { FileCheck } from "lucide-react";
+import { FaHistory, FaPlus } from "react-icons/fa";
 import { AnimatePresence, motion } from "framer-motion";
-
-// Internal Components & Utils
 import Card from "../components/compliance components/Card.jsx";
 import ReportsTable from "../components/compliance components/ReportsTable.jsx";
 import ReportForm from "../components/compliance components/ReportForm.jsx";
 import AuditView from "../components/compliance components/AuditView.jsx";
-import { handleExport } from "../components/compliance components/exportutil.js";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
-// Animation Variants (Fixed missing variables)
 const containerVar = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
@@ -20,107 +18,70 @@ const itemVar = {
   visible: { opacity: 1, y: 0 }
 };
 
+const API_BASE_URL = "http://localhost:8080/api/compliance-reports";
+
 export const Compliance = () => {
-  const [view, setView] = useState("dashboard");
+  const [view, setView] = useState("dashboard"); // Added to manage views
   const [showPopup, setShowPopup] = useState(false);
   const [reports, setReports] = useState([]);
-  const [auditLogs, setAuditLogs] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [searchInput, setSearchInput] = useState("");
-  const [logSearchTerm, setLogSearchTerm] = useState("");
-  const [fromDate, setFromDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const logsPerPage = 8;
-  const [showExportDropdown, setShowExportDropdown] = useState(false);
-  const dropdownRef = useRef(null);
+  const navigate = useNavigate();
 
-  // Debounce search input
-  useEffect(() => {
-    const handler = setTimeout(() => setLogSearchTerm(searchInput), 300);
-    return () => clearTimeout(handler);
-  }, [searchInput]);
-
-  // Load Data & Global Listeners
-  useEffect(() => {
-    const savedReports = JSON.parse(localStorage.getItem("complianceReports") || "[]");
-    const savedLogs = JSON.parse(localStorage.getItem("auditLogs") || "[]");
-    setReports(savedReports);
-    setAuditLogs(savedLogs);
-
-    const closeDropdown = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setShowExportDropdown(false);
-      }
-    };
-    window.addEventListener("mousedown", closeDropdown);
-    return () => window.removeEventListener("mousedown", closeDropdown);
-  }, []);
-
-  const parseLogDate = useCallback((str) => {
-    if (!str) return null;
-    const [datePart] = str.split(",");
-    const [d, m, y] = datePart.split("/");
-    return new Date(y, m - 1, d);
-  }, []);
-
-  // Filter Logic
-  const filteredLogs = useMemo(() => {
-    return auditLogs.filter((log) => {
-      const matchesSearch = !logSearchTerm ||
-        Object.values(log).some(v => String(v).toLowerCase().includes(logSearchTerm.toLowerCase()));
-
-      let matchesDate = true;
-      if (fromDate || endDate) {
-        const logDate = parseLogDate(log.Timestamp);
-        if (logDate) {
-          const lTime = logDate.getTime();
-          if (fromDate && lTime < new Date(fromDate).setHours(0, 0, 0, 0)) matchesDate = false;
-          if (endDate && lTime > new Date(endDate).setHours(23, 59, 59, 999)) matchesDate = false;
-        } else matchesDate = false;
-      }
-      return matchesSearch && matchesDate;
-    });
-  }, [auditLogs, logSearchTerm, fromDate, endDate, parseLogDate]);
-
-  // Add Log Entry
-  const addAuditLog = (reportId, action, oldValue = "-", newValue = "-") => {
-    const newLog = {
-      ReportID: reportId || "N/A",
-      Action: action,
-      OldValue: oldValue,
-      NewValue: newValue,
-      User: "System Administrator",
-      Timestamp: new Date().toLocaleString("en-GB")
-    };
-    const updated = [newLog, ...auditLogs];
-    setAuditLogs(updated);
-    localStorage.setItem("auditLogs", JSON.stringify(updated));
+  const fetchReports = async () => {
+    try {
+      const response = await axios.get(API_BASE_URL);
+      setReports(response.data);
+    } catch (error) {
+      console.error("Sync Error:", error);
+    }
   };
 
-  // Stats Logic
-  const dynamicStats = useMemo(() => {
-    if (!reports.length) return { "Overall Compliance": "0%", "Safety Score": "0", "Pending": "0", "Audits": "0" };
-    const compliant = reports.filter(r => r.ComplianceStatus === "Compliant").length;
-    const score = reports.reduce((a, b) => a + Number(b.SafetyScore || 0), 0);
-    return {
-      "✅ Overall Compliance": `${Math.round((compliant / reports.length) * 100)}%`,
-      "🛡️ Safety Score": `${Math.round(score / reports.length)}`,
-      "📋 Pending Reviews": reports.filter(r => r.ComplianceStatus === "Pending Review").length,
-      "📅 Upcoming Audits": reports.filter(r => r.NextAuditDate && new Date(r.NextAuditDate) >= new Date().setHours(0, 0, 0, 0)).length
+  useEffect(() => {
+    fetchReports();
+  }, []);
+
+  const [stats, setStats] = useState({
+    "✅ Overall Compliance": "0%",
+    "🛡️ Safety Score": "0",
+    "📋 Pending Reviews": 0,
+    "📅 Upcoming Audits": 0
+  });
+
+  useEffect(() => {
+    const updateStats = async () => {
+      try {
+        const response = await axios.get("http://localhost:8080/api/compliance-reports");
+        const reportData = response.data;
+        if (reportData.length === 0) return;
+
+        const compliant = reportData.filter(r => r.complianceStatus === "COMPLIANT").length;
+        const score = reportData.reduce((a, b) => a + Number(b.safetyScore || 0), 0);
+        const pending = reportData.filter(r => r.complianceStatus === "PENDING_REVIEW").length;
+        const upcoming = reportData.filter(r => r.nextAuditDate && new Date(r.nextAuditDate) >= new Date().setHours(0, 0, 0, 0)).length;
+
+        setStats({
+          "✅ Overall Compliance": `${Math.round((compliant / reportData.length) * 100)}%`,
+          "🛡️ Safety Score": `${Math.round(score / reportData.length)}`,
+          "📋 Pending Reviews": pending,
+          "📅 Upcoming Audits": upcoming
+        });
+      } catch (error) {
+        console.error("Error updating stats:", error);
+      }
     };
+    updateStats();
   }, [reports]);
-
-  // Export Wrapper
-  const onExportTrigger = (type) => {
-    handleExport(filteredLogs, type);
-    setShowExportDropdown(false);
-  };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-20 overflow-hidden">
       <AnimatePresence mode="wait">
         {view === "dashboard" ? (
-          <motion.div key="dash" variants={containerVar} initial="hidden" animate="visible" exit={{ opacity: 0, y: -20 }}>
+          <motion.div
+            key="dashboard-view"
+            variants={containerVar}
+            initial="hidden"
+            animate="visible"
+            exit={{ opacity: 0, x: -20 }}
+          >
             <div className="w-full pt-4">
               <div className="relative overflow-hidden text-white rounded-xl px-4 py-6 sm:px-12 bg-slate-900 shadow-2xl">
                 <div className="relative z-10">
@@ -128,8 +89,6 @@ export const Compliance = () => {
                     <FileCheck size={50} className="text-emerald-400 shrink-0" />
                     <span>Compliance <span className="text-emerald-400">&amp;</span> Safety</span>
                   </h2>
-
-                  {/* Added pl-[62px] to align exactly under the text, skipping the 50px icon + 12px gap */}
                   <p className="text-slate-400 font-medium text-xs sm:text-base pl-15.5">
                     Centralized regulatory tracking and real-time safety audit management.
                   </p>
@@ -138,7 +97,7 @@ export const Compliance = () => {
             </div>
 
             <motion.div variants={itemVar} className="max-w-7xl mx-auto mt-10 px-4">
-              <Card data={dynamicStats} />
+              <Card data={stats} />
             </motion.div>
 
             <motion.div variants={itemVar} className="flex justify-center mt-12 px-4">
@@ -157,7 +116,7 @@ export const Compliance = () => {
                 </button>
               </div>
               <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 p-2">
-                <ReportsTable reports={reports} setReports={setReports} onLogAction={addAuditLog} />
+                <ReportsTable reports={reports} setReports={setReports} fetchReports={fetchReports} />
               </div>
             </motion.div>
 
@@ -165,34 +124,14 @@ export const Compliance = () => {
               {showPopup && (
                 <div className="fixed inset-0 z-100 flex items-center justify-center bg-slate-950/40 backdrop-blur-xl p-4">
                   <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="w-full max-w-2xl">
-                    <ReportForm onClose={() => setShowPopup(false)} reports={reports} setReports={setReports} onLogAction={addAuditLog} />
+                    <ReportForm onClose={() => setShowPopup(false)} reports={reports} setReports={setReports} fetchReports={fetchReports} />
                   </motion.div>
                 </div>
               )}
             </AnimatePresence>
           </motion.div>
         ) : (
-          <AuditView
-            key="audit"
-            setView={setView}
-            filteredLogs={filteredLogs}
-            indexOfFirstLog={(currentPage - 1) * logsPerPage}
-            indexOfLastLog={currentPage * logsPerPage}
-            searchInput={searchInput}
-            setSearchInput={setSearchInput}
-            fromDate={fromDate}
-            setFromDate={setFromDate}
-            endDate={endDate}
-            setEndDate={setEndDate}
-            showExportDropdown={showExportDropdown}
-            setShowExportDropdown={setShowExportDropdown}
-            exportData={onExportTrigger}
-            dropdownRef={dropdownRef}
-            currentLogs={filteredLogs.slice((currentPage - 1) * logsPerPage, currentPage * logsPerPage)}
-            currentPage={currentPage}
-            setCurrentPage={setCurrentPage}
-            totalPages={Math.ceil(filteredLogs.length / logsPerPage)}
-          />
+          <AuditView key="audit-view" setView={setView} />
         )}
       </AnimatePresence>
     </div>

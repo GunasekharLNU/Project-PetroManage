@@ -10,11 +10,15 @@ C:\Users\2460592\OneDrive - Cognizant\Desktop\PetroManage\Project-PetroManage\Ba
 C:\Users\2460592\OneDrive - Cognizant\Desktop\PetroManage\Project-PetroManage\BackEnd\src\main\java\com\example\Backend\auth\entity\User.java
 C:\Users\2460592\OneDrive - Cognizant\Desktop\PetroManage\Project-PetroManage\BackEnd\src\main\java\com\example\Backend\auth\enums\UserRole.java
 C:\Users\2460592\OneDrive - Cognizant\Desktop\PetroManage\Project-PetroManage\BackEnd\src\main\java\com\example\Backend\BackendApplication.java
+C:\Users\2460592\OneDrive - Cognizant\Desktop\PetroManage\Project-PetroManage\BackEnd\src\main\java\com\example\Backend\compliance\controller\AuditController.java
 C:\Users\2460592\OneDrive - Cognizant\Desktop\PetroManage\Project-PetroManage\BackEnd\src\main\java\com\example\Backend\compliance\controller\ComplianceReportController.java
+C:\Users\2460592\OneDrive - Cognizant\Desktop\PetroManage\Project-PetroManage\BackEnd\src\main\java\com\example\Backend\compliance\entity\Audit.java
 C:\Users\2460592\OneDrive - Cognizant\Desktop\PetroManage\Project-PetroManage\BackEnd\src\main\java\com\example\Backend\compliance\entity\ComplianceReport.java
 C:\Users\2460592\OneDrive - Cognizant\Desktop\PetroManage\Project-PetroManage\BackEnd\src\main\java\com\example\Backend\compliance\enums\ComplianceStatus.java
 C:\Users\2460592\OneDrive - Cognizant\Desktop\PetroManage\Project-PetroManage\BackEnd\src\main\java\com\example\Backend\compliance\enums\ReportType.java
+C:\Users\2460592\OneDrive - Cognizant\Desktop\PetroManage\Project-PetroManage\BackEnd\src\main\java\com\example\Backend\compliance\repository\AuditRepository.java
 C:\Users\2460592\OneDrive - Cognizant\Desktop\PetroManage\Project-PetroManage\BackEnd\src\main\java\com\example\Backend\compliance\repository\ComplianceReportRepository.java
+C:\Users\2460592\OneDrive - Cognizant\Desktop\PetroManage\Project-PetroManage\BackEnd\src\main\java\com\example\Backend\compliance\service\AuditService.java
 C:\Users\2460592\OneDrive - Cognizant\Desktop\PetroManage\Project-PetroManage\BackEnd\src\main\java\com\example\Backend\compliance\service\ComplianceReportService.java
 C:\Users\2460592\OneDrive - Cognizant\Desktop\PetroManage\Project-PetroManage\BackEnd\src\main\java\com\example\Backend\maintenance\entity\Technician.java
 C:\Users\2460592\OneDrive - Cognizant\Desktop\PetroManage\Project-PetroManage\BackEnd\src\main\java\com\example\Backend\maintenance\entity\WorkOrder.java

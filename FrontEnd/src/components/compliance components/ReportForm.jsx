@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, use } from "react";
 import axios from "axios";
 import Select from "react-select";
 import DatePicker from "react-datepicker";
@@ -8,15 +8,27 @@ import {
   FaCalendarAlt, FaIndustry, FaTimes
 } from "react-icons/fa";
 
-const assets = [
-  { value: 1, label: "North Sea Rig Alpha (RIG-001)" },
-  { value: 2, label: "West Texas Rig Beta (RIG-002)" },
-  { value: 3, label: "Pipeline Delta-7 (PL-045)" },
-  { value: 4, label: "Storage Facility B (STG-012)" },
-  { value: 5, label: "Gulf Platform Echo (RIG-008)" },
-];
 
-const ReportForm = ({ onClose, reports, setReports, onLogAction }) => {
+const ReportForm = ({ onClose, reports, setReports, fetchReports }) => {
+  const [dynamicAssets, setDynamicAssets] = useState([]);
+
+  useEffect(() => {
+    const URL = "http://localhost:8080/api/assets";
+    const fetchAssets = async () => {
+      try {
+        const response = await axios.get(URL);
+        const assets = response.data.map((asset) => ({
+          value: asset.assetId,
+          label: asset.name
+        }));
+        setDynamicAssets(assets);
+      } catch (error) {
+        console.error("Error fetching assets:", error);
+      }
+    }
+    fetchAssets()
+  }, [])
+
   const [formData, setFormData] = useState({
     reportType: "",
     asset: null,
@@ -74,30 +86,20 @@ const ReportForm = ({ onClose, reports, setReports, onLogAction }) => {
     try {
       const response = await axios.post("http://localhost:8080/api/compliance-reports", payload);
 
-      // --- NORMALIZE FOR INSTANT UI UPDATE ---
-      const normalizedNewReport = {
-        ReportID: response.data.reportId,
-        AssetName: payload.assetName,
-        SafetyScore: payload.safetyScore,
-        ComplianceStatus: formData.complianceStatus,
-        NextAuditDate: payload.nextAuditDate,
-        Inspector: payload.inspector,
-        ReportType: formData.reportType
-      };
+      if (response.status === 200 || response.status === 201) {
+        // 1. Close the UI first so the user sees it vanish
+        onClose();
 
-      if (setReports) {
-        setReports((prev) => [...prev, normalizedNewReport]);
+        // 2. Refresh all data (including the Stats cards) from the database
+        if (fetchReports) {
+          await fetchReports();
+        }
+
+        alert("Success! Report saved.");
       }
-
-      if (onLogAction) {
-        onLogAction(response.data.reportId, "New Report Created", "NONE", `Inspector: ${payload.inspector}`);
-      }
-
-      alert("Success! Report saved to database.");
-      if (onClose) onClose();
     } catch (error) {
-      console.error("Submission Error:", error.response?.data);
-      alert("Failed to save: " + (error.response?.data?.message || "Check Server Connection"));
+      console.error("Submission Error:", error);
+      alert("Failed to save. Check server.");
     }
   };
 
@@ -110,7 +112,8 @@ const ReportForm = ({ onClose, reports, setReports, onLogAction }) => {
       backgroundColor: 'white',
       borderColor: state.isFocused ? '#10b981' : '#e2e8f0',
       boxShadow: state.isFocused ? '0 0 0 1px #10b981' : 'none',
-      '&:hover': { borderColor: '#10b981' }
+      '&:hover': { borderColor: '#10b981' },
+      cursor: 'pointer'
     }),
     menuPortal: base => ({ ...base, zIndex: 9999 }),
     option: (base, state) => ({
@@ -119,10 +122,11 @@ const ReportForm = ({ onClose, reports, setReports, onLogAction }) => {
       padding: '12px',
       backgroundColor: state.isSelected ? '#10b981' : state.isFocused ? '#ecfdf5' : 'white',
       color: state.isSelected ? 'white' : '#1e293b',
+      cursor: 'pointer',
     })
   };
 
-  const inputClasses = "w-full bg-white border border-slate-200 rounded-xl p-3 sm:p-4 text-sm outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 transition-all font-semibold shadow-sm";
+  const inputClasses = "cursor-pointer w-full bg-white border border-slate-200 rounded-xl p-3 sm:p-4 text-sm outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 transition-all font-semibold shadow-sm";
   const labelClasses = "flex items-center gap-2 text-[10px] sm:text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1.5";
 
   return (
@@ -156,13 +160,12 @@ const ReportForm = ({ onClose, reports, setReports, onLogAction }) => {
             </div>
             <div className="space-y-1">
               <label className={labelClasses}><FaShieldAlt className="text-emerald-600" /> Asset Selection</label>
-              <Select options={assets} value={formData.asset} onChange={handleAssetChange} styles={selectStyles} placeholder="Find asset..." required menuPortalTarget={document.body} />
+              <Select options={dynamicAssets} value={formData.asset} onChange={handleAssetChange} styles={selectStyles} placeholder="Find asset..." required menuPortalTarget={document.body} />
             </div>
             <div className="space-y-1">
               <label className={labelClasses}><FaCheckCircle className="text-emerald-600" /> Safety Score (0-100)</label>
               <div className="relative">
                 <input type="number" name="safetyScore" value={formData.safetyScore} onChange={handleChange} min="0" max="100" placeholder="Enter score" className={inputClasses} required />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 font-bold">%</span>
               </div>
             </div>
             <div className="space-y-1">

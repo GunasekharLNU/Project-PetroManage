@@ -1,10 +1,10 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import {Layout} from './pages/Layout';
-import {Dashboard} from './pages/Dashboard';
-import {Assets} from './pages/Assets';
+import { Layout } from './pages/Layout';
+import { Dashboard } from './pages/Dashboard';
+import { Assets } from './pages/Assets';
 import { Production } from './pages/Production';
 import { Compliance } from './pages/Compliance';
-import {Analytics} from './pages/Analytics';
+import { Analytics } from './pages/Analytics';
 import { Maintenance } from './pages/Maintenance';
 import { StatusView } from './components/maintenance components/StatusView';
 import { Home } from './pages/Home';
@@ -29,9 +29,9 @@ function App() {
           <Route path="profile" element={<Profile />} />
           {/* <Route path="analytics" element={<Analytics />} /> */}
         </Route>
-        <Route path="/login" element={<Login/>}/>
-        <Route path="/register" element={<Registration/>}/>
-        <Route path="/forgot" element={<ForgotPassword/>}/>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Registration />} />
+        <Route path="/forgot" element={<ForgotPassword />} />
       </Routes>
     </BrowserRouter>
   );

@@ -9,23 +9,22 @@ import {
   FaTimes
 } from "react-icons/fa";
 
-const UpdateForm = ({ onClose, reports, setReports, reportToUpdate, onUpdateSuccess }) => {
+const UpdateForm = ({ onClose, report, onUpdateSuccess }) => {
   const [formData, setFormData] = useState({
     safetyScore: "",
     complianceStatus: "",
   });
 
-  // 1. Initialize and Normalize data for the form state
+  // 1. Initialize data - Only safetyScore and complianceStatus are editable
   useEffect(() => {
-    if (reportToUpdate) {
-      const rawStatus = reportToUpdate.complianceStatus || reportToUpdate.ComplianceStatus || "";
+    if (report) {
       setFormData({
-        safetyScore: reportToUpdate.safetyScore ?? reportToUpdate.SafetyScore ?? "",
-        // Form needs underscores for the <select> values to match Java Enums
-        complianceStatus: rawStatus.toString().toUpperCase().replace(/\s+/g, '_'),
+        safetyScore: report.safetyScore || 0,
+        // Ensure we handle potential nulls and match backend ENUM format
+        complianceStatus: report.complianceStatus ? report.complianceStatus.toUpperCase() : "PENDING_REVIEW",
       });
     }
-  }, [reportToUpdate]);
+  }, [report]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -35,77 +34,46 @@ const UpdateForm = ({ onClose, reports, setReports, reportToUpdate, onUpdateSucc
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const id = reportToUpdate?.reportId || reportToUpdate?.ReportID;
-    if (!id) {
-      alert("Error: Missing Report ID");
-      return;
-    }
-
-    // Helper to ensure Enums are UPPERCASE_WITH_UNDERSCORES
-    const formatForEnum = (str) =>
-      str ? str.toString().toUpperCase().replace(/\s+/g, '_').trim() : null;
-
-    // 2. Prepare Payload including existing data to prevent MySQL NULL overwrites
-    const cleanPayload = {
-      reportId: id,
-      // Updated fields
+    // 2. Build the full payload
+    // We combine the editable formData with the static report data 
+    // to satisfy the backend's PUT requirement for a full object.
+    const payload = {
+      reportId: report.reportId,
+      asset: {
+        assetId: report.asset?.assetId || report.assetId
+      },
+      assetName: report.assetName,
+      reportType: report.reportType, // Use report. (static) not formData. (missing)
       safetyScore: Number(formData.safetyScore),
-      complianceStatus: formatForEnum(formData.complianceStatus),
-
-      // Preservation fields (Inspector, Dates, Asset info)
-      inspector: reportToUpdate.inspector || reportToUpdate.Inspector,
-      nextAuditDate: reportToUpdate.nextAuditDate || reportToUpdate.NextAuditDate,
-      generatedDate: reportToUpdate.generatedDate || reportToUpdate.GeneratedDate,
-      assetName: reportToUpdate.assetName || reportToUpdate.AssetName,
-
-      // Sanitize ReportType Enum (Prevents the "Safety Compliance" parse error)
-      reportType: formatForEnum(reportToUpdate.reportType || reportToUpdate.ReportType),
-
-      // Include nested asset if available
-      asset: reportToUpdate.asset || null
+      complianceStatus: formData.complianceStatus,
+      inspector: report.inspector,     // Use report. (static)
+      nextAuditDate: report.nextAuditDate, // Use report. (static)
+      generatedDate: report.generatedDate
     };
 
     try {
-      const url = `http://localhost:8080/api/compliance-reports/${id}`;
-      const response = await axios.put(url, cleanPayload);
+      const URL = `http://localhost:8080/api/compliance-reports/${report.reportId}`;
+      const response = await axios.put(URL, payload);
 
       if (response.status === 200 || response.status === 204) {
-        // 3. Update Local UI state (removed localStorage as requested)
-        if (reports && Array.isArray(reports)) {
-          const updatedReports = reports.map((report) => {
-            const currentId = report.reportId || report.ReportID;
-            if (currentId === id) {
-              return {
-                ...report,
-                SafetyScore: Number(formData.safetyScore),
-                ComplianceStatus: cleanPayload.complianceStatus,
-                LastUpdated: new Date().toLocaleString("en-GB"),
-              };
-            }
-            return report;
-          });
-          setReports(updatedReports);
-        }
-
-        if (onUpdateSuccess) onUpdateSuccess(cleanPayload);
+        if (onUpdateSuccess) await onUpdateSuccess()
         onClose();
       }
     } catch (error) {
-      console.error("Payload causing error:", cleanPayload);
-      const errorMsg = error.response?.data?.message || "Check Java console for Enum mapping errors.";
-      alert(`Update Failed: ${errorMsg}`);
+      console.error("Update failed. Payload:", payload);
+      console.error("Error Details:", error.response?.data || error.message);
+      alert("Failed to update report. Check console for details.");
     }
   };
 
-  if (!reportToUpdate) return null;
+  if (!report) return null;
 
-  // Shared Responsive Tailwind Classes
   const labelClasses = "flex items-center gap-2 text-[10px] sm:text-[11px] font-black uppercase tracking-widest mb-2 transition-all";
   const disabledClasses = "w-full bg-slate-50 border border-slate-200 rounded-xl p-3 sm:p-4 text-[13px] text-slate-400 font-semibold cursor-not-allowed transition-all shadow-inner";
   const editableClasses = "w-full bg-white border border-emerald-200 rounded-xl p-3 sm:p-4 text-[13px] outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 transition-all font-bold text-slate-900 shadow-sm cursor-pointer hover:border-emerald-300";
 
   return (
-    <div className="w-full max-w-4xl mx-auto bg-white rounded-2xl sm:rounded-4xl overflow-hidden border border-slate-200 shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[95vh] animate-in fade-in zoom-in duration-300">
+    <div className="w-full max-w-4xl mx-auto bg-white rounded-3xl overflow-hidden border border-slate-200 shadow-2xl flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-300">
 
       {/* HEADER SECTION */}
       <div className="bg-slate-900 px-6 py-5 sm:p-8 text-white flex items-center justify-between border-b-4 border-amber-500 shrink-0">
@@ -114,109 +82,78 @@ const UpdateForm = ({ onClose, reports, setReports, reportToUpdate, onUpdateSucc
             <FaEdit className="text-amber-500 text-xl" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-lg sm:text-2xl font-black tracking-tighter truncate">Update Metrics</h2>
+            <h2 className="text-lg sm:text-2xl font-black tracking-tighter uppercase">Update Metrics</h2>
             <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest truncate">
-              ID: <span className="text-amber-400">{reportToUpdate?.reportId || reportToUpdate?.ReportID}</span>
+              ID: <span className="text-amber-400">{report.reportId}</span>
             </p>
           </div>
         </div>
-        <button onClick={onClose} className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all cursor-pointer shrink-0">
+        <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all cursor-pointer">
           <FaTimes className="text-xl" />
         </button>
       </div>
 
-      {/* FORM CONTENT (Scrollable Area) */}
+      {/* FORM CONTENT */}
       <div className="flex-1 overflow-y-auto p-6 sm:p-10 bg-slate-50/30 scrollbar-hide">
-        <form id="update-form" onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
+        <form id="update-form" onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
-
-            {/* Asset Name - Read Only */}
-            <div className="space-y-1">
-              <label className={`${labelClasses} text-slate-400`}>
-                <FaLock className="opacity-50" /> Asset Name
-              </label>
-              <input type="text" disabled value={reportToUpdate?.assetName || reportToUpdate?.AssetName || ""} className={disabledClasses} />
-            </div>
-
-            {/* Report Type - Read Only */}
-            <div className="space-y-1">
-              <label className={`${labelClasses} text-slate-400`}>
-                <FaLock className="opacity-50" /> Report Type
-              </label>
-              <input type="text" disabled value={reportToUpdate?.reportType || reportToUpdate?.ReportType || ""} className={disabledClasses} />
-            </div>
-
-            {/* Safety Score - EDITABLE */}
-            <div className="space-y-1 group">
-              <label className={`${labelClasses} text-emerald-600 group-focus-within:text-emerald-400`}>
-                <FaCheckCircle /> Safety Score (0-100)
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  name="safetyScore"
-                  value={formData.safetyScore}
-                  onChange={handleChange}
-                  min="0" max="100"
-                  className={editableClasses}
-                  required
-                />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-slate-300 pointer-events-none">%</span>
-              </div>
-            </div>
-
-            {/* Compliance Status - EDITABLE */}
-            <div className="space-y-1 group">
-              <label className={`${labelClasses} text-emerald-600 group-focus-within:text-emerald-400`}>
-                <FaCheckCircle /> Compliance Status
-              </label>
-              <div className="relative">
-                <select
-                  name="complianceStatus"
-                  value={formData.complianceStatus}
-                  onChange={handleChange}
-                  className={`${editableClasses} appearance-none pr-10`}
-                  required
-                >
-                  <option value="COMPLIANT">Compliant</option>
-                  <option value="NON_COMPLIANT">Non-Compliant</option>
-                  <option value="PENDING_REVIEW">Pending Review</option>
-                </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {/* Original Inspector - Read Only */}
-            <div className="space-y-1">
-              <label className={`${labelClasses} text-slate-400`}>
-                <FaUserTie className="opacity-50" /> Original Inspector
-              </label>
-              <input type="text" disabled value={reportToUpdate?.inspector || reportToUpdate?.Inspector || "N/A"} className={disabledClasses} />
-            </div>
-
-            {/* Next Audit - Read Only */}
-            <div className="space-y-1">
-              <label className={`${labelClasses} text-slate-400`}>
-                <FaCalendarAlt className="opacity-50" /> Next Audit Date
-              </label>
-              <input type="text" disabled value={reportToUpdate?.nextAuditDate || reportToUpdate?.NextAuditDate || "N/A"} className={disabledClasses} />
-            </div>
-
+          <div className="space-y-1">
+            <label className={`${labelClasses} text-slate-400`}><FaLock className="opacity-50" /> Asset Name</label>
+            <input type="text" disabled value={report.assetName || ""} className={disabledClasses} />
           </div>
+
+          <div className="space-y-1">
+            <label className={`${labelClasses} text-slate-400`}><FaLock className="opacity-50" /> Report Type</label>
+            <input type="text" disabled value={report.reportType || ""} className={disabledClasses} />
+          </div>
+
+          <div className="space-y-1 group">
+            <label className={`${labelClasses} text-emerald-600 group-focus-within:text-emerald-400`}><FaCheckCircle /> Safety Score (0-100)</label>
+            <input
+              type="number"
+              name="safetyScore"
+              value={formData.safetyScore}
+              onChange={handleChange}
+              min="0" max="100"
+              className={editableClasses}
+              required
+            />
+          </div>
+
+          <div className="space-y-1 group">
+            <label className={`${labelClasses} text-emerald-600 group-focus-within:text-emerald-400`}><FaCheckCircle /> Compliance Status</label>
+            <select
+              name="complianceStatus"
+              value={formData.complianceStatus}
+              onChange={handleChange}
+              className={`${editableClasses} appearance-none pr-10`}
+              required
+            >
+              <option value="COMPLIANT">Compliant</option>
+              <option value="NON_COMPLIANT">Non-Compliant</option>
+              <option value="PENDING_REVIEW">Pending Review</option>
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className={`${labelClasses} text-slate-400`}><FaUserTie className="opacity-50" /> Inspector</label>
+            <input type="text" disabled value={report.inspector || ""} className={disabledClasses} />
+          </div>
+
+          <div className="space-y-1">
+            <label className={`${labelClasses} text-slate-400`}><FaCalendarAlt className="opacity-50" /> Next Audit Date</label>
+            <input type="text" disabled value={report.nextAuditDate || ""} className={disabledClasses} />
+          </div>
+
         </form>
       </div>
 
-      {/* FOOTER SECTION (Sticky) */}
+      {/* FOOTER SECTION */}
       <div className="p-6 sm:p-8 border-t border-slate-100 bg-white flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
         <button
           type="button"
           onClick={onClose}
-          className="w-full sm:w-auto order-2 sm:order-1 text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-red-500 transition-all p-2 cursor-pointer active:scale-95"
+          className="text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-red-500 transition-all p-2 cursor-pointer active:scale-95"
         >
           Discard Changes
         </button>
@@ -224,7 +161,7 @@ const UpdateForm = ({ onClose, reports, setReports, reportToUpdate, onUpdateSucc
         <button
           form="update-form"
           type="submit"
-          className="w-full sm:w-auto order-1 sm:order-2 px-10 py-4 sm:py-4 bg-slate-900 text-white text-[11px] font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-emerald-600 hover:-translate-y-1 transition-all shadow-xl shadow-slate-200 active:scale-95 cursor-pointer flex items-center justify-center gap-3"
+          className="w-full sm:w-auto px-10 py-4 bg-slate-900 text-white text-[11px] font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-emerald-600 hover:-translate-y-1 transition-all shadow-xl active:scale-95 cursor-pointer flex items-center justify-center gap-3"
         >
           Apply Changes
         </button>
