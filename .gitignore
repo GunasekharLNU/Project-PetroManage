@@ -1,0 +1,6 @@
+/BackEnd/target/
+*.jar
+*.class
+.mvn/
+bin/
+.DS_Store
