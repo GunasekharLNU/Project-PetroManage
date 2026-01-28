@@ -2,8 +2,13 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import ReportCard from "./ReportCard";
 import UpdateForm from "./UpdateForm";
-import { FaFileExport, FaChevronDown } from "react-icons/fa";
-import { handleExport } from "./exportutil.js";
+import {
+  FaFileExport,
+  FaChevronDown,
+  FaSearch,
+  FaTimes,
+  FaCalendarAlt
+} from "react-icons/fa"; import { handleExport } from "./exportutil.js";
 
 const API_BASE_URL = "http://localhost:8080/api/compliance-reports";
 
@@ -12,6 +17,15 @@ const ReportsTable = ({ reports, setReports, fetchReports }) => {
   const [editingReport, setEditingReport] = useState(null);
   const [showExportAllDropdown, setShowExportAllDropdown] = useState(false);
   const [showSingleExportDropdown, setShowSingleExportDropdown] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setStartDate("");
+    setEndDate("");
+  };
 
   // --- REFINED EXPORT WRAPPER ---
   const triggerExport = (data, format) => {
@@ -44,26 +58,77 @@ const ReportsTable = ({ reports, setReports, fetchReports }) => {
     <div className="w-full px-4 sm:px-6 lg:px-8 py-6 max-w-400 mx-auto font-sans text-slate-900 bg-slate-50 min-h-screen">
 
       {/* --- TOOLBAR: Simplified (Export Only) --- */}
-      <div className="flex justify-end mb-8">
-        <div className="relative" onMouseEnter={() => setShowExportAllDropdown(true)} onMouseLeave={() => setShowExportAllDropdown(false)}>
-          <button className="cursor-pointer w-full sm:w-auto px-8 h-12 bg-slate-900 text-white font-bold rounded-2xl transition-all shadow-lg text-[10px] uppercase tracking-widest hover:bg-slate-800 flex items-center gap-2 justify-center">
-            <FaFileExport /> Export All Data
-          </button>
-          {showExportAllDropdown && (
-            <div className="absolute right-0 pt-2 w-full sm:w-44 z-100 animate-in fade-in slide-in-from-top-2">
-              <div className="bg-white border border-slate-100 rounded-2xl shadow-2xl py-2 overflow-hidden">
-                {['json', 'excel', 'pdf'].map((fmt) => (
-                  <button
-                    key={fmt}
-                    onClick={() => triggerExport(reports, fmt)}
-                    className="w-full text-left px-5 py-2.5 text-[10px] font-bold text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 transition uppercase cursor-pointer"
-                  >
-                    Save as {fmt}
-                  </button>
-                ))}
-              </div>
+      <div>
+        {/* --- SINGLE LINE TOOLBAR --- */}
+        <div className="flex flex-row items-center justify-between gap-4 mb-8 bg-white p-3 rounded-3xl border border-slate-200 shadow-sm">
+
+          {/* Left Side: Search Only */}
+          <div className="flex-1 max-w-sm">
+            <div className="relative">
+              <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search Report..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-11 pr-4 h-12 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-emerald-50 focus:border-emerald-500 transition-all"
+              />
             </div>
-          )}
+          </div>
+
+          {/* Right Side: Dates + Export Button */}
+          <div className="flex items-center gap-3">
+
+            {/* Date Range Group (Moved here) */}
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-2xl px-4 h-12">
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="text-[10px] font-black uppercase outline-none bg-transparent text-slate-600 cursor-pointer"
+                />
+                <span className="text-slate-300 text-xs font-bold font-sans">TO</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="text-[10px] font-black uppercase outline-none bg-transparent text-slate-600 cursor-pointer"
+                />
+              </div>
+              {(searchTerm || startDate || endDate) && (
+                <button
+                  onClick={clearFilters}
+                  className="cursor-pointer ml-2 p-1.5 hover:bg-white rounded-full text-slate-400 hover:text-red-500 transition-colors border border-transparent hover:border-slate-100"
+                  title="Clear Filters"
+                >
+                  <FaTimes size={12} />
+                </button>
+              )}
+            </div>
+
+            {/* Export Dropdown */}
+            <div className="relative" onMouseEnter={() => setShowExportAllDropdown(true)} onMouseLeave={() => setShowExportAllDropdown(false)}>
+              <button className="cursor-pointer px-6 h-12 bg-slate-900 text-white font-bold rounded-2xl transition-all shadow-lg text-[10px] uppercase tracking-widest hover:bg-slate-800 flex items-center gap-2 whitespace-nowrap">
+                <FaFileExport className="text-emerald-400" /> Export
+              </button>
+              {showExportAllDropdown && (
+                <div className="absolute right-0 pt-2 w-44 z-100 animate-in fade-in slide-in-from-top-2">
+                  <div className="bg-white border border-slate-100 rounded-2xl shadow-2xl py-2 overflow-hidden">
+                    {['json', 'excel', 'pdf'].map((fmt) => (
+                      <button
+                        key={fmt}
+                        onClick={() => triggerExport(reports, fmt)}
+                        className="w-full text-left px-5 py-2.5 text-[10px] font-bold text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 transition uppercase cursor-pointer"
+                      >
+                        Save as {fmt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
