@@ -226,13 +226,6 @@ const ReportsTable = ({ reports, setReports, fetchReports }) => {
               </div>
 
               <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setSelectedReport(null)}
-                  className="px-6 h-10 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-all text-[9px] uppercase tracking-widest cursor-pointer"
-                >
-                  Close
-                </button>
-
                 <div
                   className="relative"
                   onMouseEnter={() => setShowSingleExportDropdown(true)}

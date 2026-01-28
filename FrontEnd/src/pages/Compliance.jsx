@@ -24,12 +24,11 @@ export const Compliance = () => {
   const [view, setView] = useState("dashboard"); // Added to manage views
   const [showPopup, setShowPopup] = useState(false);
   const [reports, setReports] = useState([]);
-  const navigate = useNavigate();
 
   const fetchReports = async () => {
     try {
       const response = await axios.get(API_BASE_URL);
-      setReports(response.data);
+      setReports(response.data.reverse());
     } catch (error) {
       console.error("Sync Error:", error);
     }
