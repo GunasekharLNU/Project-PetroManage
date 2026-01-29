@@ -1,4 +1,4 @@
-import React, { useState, useEffect, use } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import Select from "react-select";
 import DatePicker from "react-datepicker";
@@ -8,8 +8,7 @@ import {
   FaCalendarAlt, FaIndustry, FaTimes
 } from "react-icons/fa";
 
-
-const ReportForm = ({ onClose, reports, setReports, fetchReports }) => {
+const ReportForm = ({ onClose, fetchReports }) => {
   const [dynamicAssets, setDynamicAssets] = useState([]);
 
   useEffect(() => {
@@ -25,9 +24,9 @@ const ReportForm = ({ onClose, reports, setReports, fetchReports }) => {
       } catch (error) {
         console.error("Error fetching assets:", error);
       }
-    }
-    fetchAssets()
-  }, [])
+    };
+    fetchAssets();
+  }, []);
 
   const initialFormState = {
     reportType: "",
@@ -38,21 +37,13 @@ const ReportForm = ({ onClose, reports, setReports, fetchReports }) => {
     nextAuditDate: new Date(),
   };
 
+  const [formData, setFormData] = useState(initialFormState);
+
   const handleDiscard = (e) => {
     if (e) e.preventDefault();
     setFormData(initialFormState);
     document.getElementById("report-form").reset();
   };
-
-  const [formData, setFormData] = useState({
-    reportType: "",
-    asset: null,
-    safetyScore: "",
-    complianceStatus: "",
-    inspector: "",
-    nextAuditDate: new Date(),
-    generatedDate: new Date().toISOString(),
-  });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -100,16 +91,9 @@ const ReportForm = ({ onClose, reports, setReports, fetchReports }) => {
 
     try {
       const response = await axios.post("http://localhost:8080/api/compliance-reports", payload);
-
       if (response.status === 200 || response.status === 201) {
-        // 1. Close the UI first so the user sees it vanish
         onClose();
-
-        // 2. Refresh all data (including the Stats cards) from the database
-        if (fetchReports) {
-          await fetchReports();
-        }
-
+        if (fetchReports) await fetchReports();
         alert("Success! Report saved.");
       }
     } catch (error) {
@@ -141,78 +125,98 @@ const ReportForm = ({ onClose, reports, setReports, fetchReports }) => {
     })
   };
 
-  const inputClasses = "cursor-pointer w-full bg-white border border-slate-200 rounded-xl p-3 sm:p-4 text-sm outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 transition-all font-semibold shadow-sm";
-  const labelClasses = "flex items-center gap-2 text-[10px] sm:text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1.5";
+  const inputClasses = "w-full bg-white border border-slate-200 rounded-xl p-3.5 text-sm outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 transition-all font-semibold shadow-sm";
+  const labelClasses = "flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5";
 
   return (
-    <div className="w-full max-w-4xl mx-auto bg-white rounded-2xl sm:rounded-4xl overflow-hidden border border-slate-200 shadow-2xl flex flex-col h-full max-h-[92vh] sm:max-h-[95vh] animate-in fade-in zoom-in duration-300">
-      <div className="bg-slate-900 px-6 py-5 sm:p-8 text-white flex items-center justify-between border-b-4 border-emerald-500 shrink-0">
-        <div className="flex items-center gap-4 min-w-0">
-          <div className="p-3 bg-slate-800 rounded-2xl hidden sm:flex items-center justify-center shrink-0">
-            <FaIndustry className="text-emerald-500 text-xl sm:text-2xl" />
+    <div className="w-full max-w-4xl mx-auto bg-white rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-200 shadow-2xl flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-300">
+
+      {/* HEADER: Responsive padding and font size */}
+      <div className="bg-slate-900 px-5 py-4 sm:px-8 sm:py-6 text-white flex items-center justify-between border-b-4 border-emerald-500 shrink-0">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <div className="p-2.5 bg-slate-800 rounded-xl hidden xs:flex items-center justify-center shrink-0">
+            <FaIndustry className="text-emerald-500 text-lg sm:text-2xl" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-lg sm:text-2xl font-black tracking-tighter truncate">Generate Report</h2>
-            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest truncate">Asset Operations Management</p>
+            <h2 className="text-base sm:text-2xl font-black tracking-tighter truncate">Generate Report</h2>
+            <p className="text-slate-400 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest truncate">Asset Operations</p>
           </div>
         </div>
-        <button onClick={onClose} className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all cursor-pointer shrink-0">
-          <FaTimes className="text-xl sm:text-2xl" />
+        <button onClick={onClose} className="w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all shrink-0">
+          <FaTimes className="cursor-pointer text-lg sm:text-xl" />
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 sm:p-10 bg-slate-50/30">
-        <form id="report-form" onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+      {/* BODY: Responsive grid (1 col on mobile, 2 on desktop) */}
+      <div className="flex-1 overflow-y-auto p-5 sm:p-10 bg-slate-50/30">
+        <form id="report-form" onSubmit={handleSubmit} className="space-y-5 sm:space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-8">
+
             <div className="space-y-1">
               <label className={labelClasses}><FaClipboardList className="text-emerald-600" /> Report Type</label>
-              <select name="reportType" value={formData.reportType} onChange={handleChange} className={`${inputClasses} appearance-none cursor-pointer pr-10`} required>
+              <select name="reportType" value={formData.reportType} onChange={handleChange} className={`${inputClasses} appearance-none pr-10 cursor-pointer`} required>
                 <option value="">Select Type</option>
                 <option value="Safety Compliance">Safety Compliance</option>
                 <option value="Environmental Compliance">Environmental Compliance</option>
                 <option value="Regulatory">Regulatory</option>
               </select>
             </div>
+
             <div className="space-y-1">
               <label className={labelClasses}><FaShieldAlt className="text-emerald-600" /> Asset Selection</label>
               <Select options={dynamicAssets} value={formData.asset} onChange={handleAssetChange} styles={selectStyles} placeholder="Find asset..." required menuPortalTarget={document.body} />
             </div>
+
             <div className="space-y-1">
               <label className={labelClasses}><FaCheckCircle className="text-emerald-600" /> Safety Score (0-100)</label>
-              <div className="relative">
-                <input type="number" name="safetyScore" value={formData.safetyScore} onChange={handleChange} min="0" max="100" placeholder="Enter score" className={inputClasses} required />
-              </div>
+              <input type="number" name="safetyScore" value={formData.safetyScore} onChange={handleChange} min="0" max="100" placeholder="Enter score" className={inputClasses} required />
             </div>
+
             <div className="space-y-1">
               <label className={labelClasses}><FaCheckCircle className="text-emerald-600" /> Compliance Status</label>
-              <select name="complianceStatus" value={formData.complianceStatus} onChange={handleChange} className={`${inputClasses} appearance-none cursor-pointer pr-10`} required>
+              <select name="complianceStatus" value={formData.complianceStatus} onChange={handleChange} className={`${inputClasses} appearance-none pr-10 cursor-pointer`} required>
                 <option value="">Set Status</option>
                 <option value="Compliant">Compliant</option>
                 <option value="Non-Compliant">Non-Compliant</option>
                 <option value="Pending Review">Pending Review</option>
               </select>
             </div>
+
             <div className="space-y-1">
               <label className={labelClasses}><FaUserTie className="text-emerald-600" /> Inspector / Lead</label>
               <input type="text" name="inspector" value={formData.inspector} onChange={handleChange} placeholder="Name or Agency" className={inputClasses} required />
             </div>
+
             <div className="space-y-1">
               <label className={labelClasses}><FaCalendarAlt className="text-emerald-600" /> Next Audit Date</label>
-              <DatePicker selected={formData.nextAuditDate} onChange={handleDateChange} dateFormat="dd MMM yyyy" minDate={new Date()} className={`${inputClasses} cursor-pointer`} wrapperClassName="w-full" />
+              <DatePicker
+                selected={formData.nextAuditDate}
+                onChange={handleDateChange}
+                dateFormat="dd MMM yyyy"
+                minDate={new Date()}
+                className={inputClasses}
+                wrapperClassName="w-full" // Ensures datepicker takes full width
+              />
             </div>
+
           </div>
         </form>
       </div>
 
-      <div className="p-6 sm:p-8 bg-white border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
+      {/* FOOTER: Stacks buttons on mobile, side-by-side on desktop */}
+      <div className="p-5 sm:p-8 bg-white border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
         <button
           type="button"
           onClick={handleDiscard}
-          className="px-6 py-2 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-all cursor-pointer"
+          className="cursor-pointer w-full sm:w-auto px-6 py-3 text-slate-500 font-bold text-xs uppercase tracking-widest hover:bg-slate-100 rounded-xl transition-all"
         >
-          Discard Changes
+          Discard
         </button>
-        <button form="report-form" type="submit" className="w-full sm:w-auto order-1 sm:order-2 px-10 py-4 sm:py-4 bg-emerald-600 text-white text-[11px] font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-emerald-700 hover:-translate-y-1 transition-all shadow-xl shadow-emerald-100 active:scale-95 cursor-pointer flex items-center justify-center gap-2">
+        <button
+          form="report-form"
+          type="submit"
+          className="cursor-pointer w-full sm:w-auto px-10 py-4 bg-emerald-600 text-white text-[11px] font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-emerald-700 active:scale-95 transition-all shadow-lg shadow-emerald-100 flex items-center justify-center gap-2"
+        >
           Generate Report
         </button>
       </div>
