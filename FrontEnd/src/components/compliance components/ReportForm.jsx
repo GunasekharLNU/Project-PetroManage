@@ -29,6 +29,21 @@ const ReportForm = ({ onClose, reports, setReports, fetchReports }) => {
     fetchAssets()
   }, [])
 
+  const initialFormState = {
+    reportType: "",
+    asset: null,
+    safetyScore: "",
+    complianceStatus: "",
+    inspector: "",
+    nextAuditDate: new Date(),
+  };
+
+  const handleDiscard = (e) => {
+    if (e) e.preventDefault();
+    setFormData(initialFormState);
+    document.getElementById("report-form").reset();
+  };
+
   const [formData, setFormData] = useState({
     reportType: "",
     asset: null,
@@ -190,7 +205,11 @@ const ReportForm = ({ onClose, reports, setReports, fetchReports }) => {
       </div>
 
       <div className="p-6 sm:p-8 bg-white border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
-        <button type="button" onClick={onClose} className="w-full sm:w-auto order-2 sm:order-1 text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-red-500 transition-all p-2 cursor-pointer active:scale-95">
+        <button
+          type="button"
+          onClick={handleDiscard}
+          className="px-6 py-2 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-all cursor-pointer"
+        >
           Discard Changes
         </button>
         <button form="report-form" type="submit" className="w-full sm:w-auto order-1 sm:order-2 px-10 py-4 sm:py-4 bg-emerald-600 text-white text-[11px] font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-emerald-700 hover:-translate-y-1 transition-all shadow-xl shadow-emerald-100 active:scale-95 cursor-pointer flex items-center justify-center gap-2">

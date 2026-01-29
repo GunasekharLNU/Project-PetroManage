@@ -66,6 +66,21 @@ const UpdateForm = ({ onClose, report, onUpdateSuccess }) => {
     }
   };
 
+  const handleDiscard = (e) => {
+    if (e) e.preventDefault();
+
+    setFormData({
+      reportType: report.reportType || "",
+      asset: report.asset || null,
+      safetyScore: report.safetyScore || "",
+      complianceStatus: report.complianceStatus || "",
+      inspector: report.inspector || "",
+      nextAuditDate: report.nextAuditDate ? new Date(report.nextAuditDate) : new Date(),
+    })
+
+    document.getElementById("report-form").reset();
+  }
+
   if (!report) return null;
 
   const labelClasses = "flex items-center gap-2 text-[10px] sm:text-[11px] font-black uppercase tracking-widest mb-2 transition-all";
@@ -151,9 +166,9 @@ const UpdateForm = ({ onClose, report, onUpdateSuccess }) => {
       {/* FOOTER SECTION */}
       <div className="p-6 sm:p-8 border-t border-slate-100 bg-white flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
         <button
-          type="button"
-          onClick={onClose}
-          className="text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-red-500 transition-all p-2 cursor-pointer active:scale-95"
+          type="button" // Critical: prevents form submission
+          onClick={handleDiscard}
+          className="px-6 py-2 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-all cursor-pointer"
         >
           Discard Changes
         </button>

@@ -2,18 +2,22 @@ import React, { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FaHistory, FaArrowLeft, FaSearch, FaChevronDown, FaCode,
-  FaFileCsv, FaFileExcel, FaFilePdf, FaTimes
+  FaFileExcel, FaFilePdf, FaTimes, FaFileExport, FaChevronLeft, FaChevronRight
 } from "react-icons/fa";
 import axios from "axios";
 import { handleExport } from "./exportutil";
 
 const AuditView = ({ setView }) => {
   const [data, setData] = useState([]);
-  const [searchInput, setSearchInput] = useState("");
-  const [fromDate, setFromDate] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const dropdownRef = useRef(null);
+
+  // --- MANUAL PAGINATION STATE ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
   useEffect(() => {
     const getAudit = async () => {
@@ -29,9 +33,58 @@ const AuditView = ({ setView }) => {
   }, []);
 
   const clearDates = () => {
-    setFromDate("");
+    setStartDate("");
     setEndDate("");
   };
+
+  const parseCustomDate = (dateStr) => {
+    if (!dateStr) return null;
+    const [datePart] = dateStr.split(", ");
+    const [day, month, year] = datePart.split("/");
+    return new Date(year, month - 1, day);
+  };
+
+  // --- 1. FILTERING LOGIC ---
+  const filteredReports = data.filter((log) => {
+    const query = searchTerm.toLowerCase();
+    const matchesSearch =
+      log.action?.toLowerCase().includes(query) ||
+      log.user?.toLowerCase().includes(query) ||
+      log.oldValue?.toLowerCase().includes(query) ||
+      log.newValue?.toLowerCase().includes(query) ||
+      log.reportIdDisplay?.toString().includes(query);
+
+    let matchesDate = true;
+    if (startDate || endDate) {
+      const logDate = parseCustomDate(log.timestamp);
+      if (!logDate) return false;
+
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        matchesDate = matchesDate && logDate >= start;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(0, 0, 0, 0);
+        matchesDate = matchesDate && logDate <= end;
+      }
+    }
+    return matchesSearch && matchesDate;
+  });
+
+  // --- 2. PAGINATION LOGIC ---
+  const totalPages = Math.ceil(filteredReports.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredReports.slice(indexOfFirstItem, indexOfLastItem);
+
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+  // Reset to page 1 whenever filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, startDate, endDate]);
 
   return (
     <motion.div
@@ -41,72 +94,72 @@ const AuditView = ({ setView }) => {
       className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6"
     >
       {/* Navigation */}
-      <button
-        onClick={() => setView("dashboard")}
-        className="flex items-center gap-2 px-5 py-3 text-sm font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 transition-all mb-8 shadow-lg cursor-pointer"
-      >
-        <FaArrowLeft /> Back to Dashboard
-      </button>
+      <div className="flex items-center mb-10 relative">
+        <button
+          onClick={() => setView("dashboard")}
+          className="absolute left-0 flex items-center gap-2 px-5 py-3 text-sm font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 transition-all shadow-lg cursor-pointer z-10"
+        >
+          <FaArrowLeft /> Back to Dashboard
+        </button>
 
-      {/* Header & Controls */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-8 gap-6">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 flex items-center gap-3">
+        <div className="flex-1 text-center">
+          <h1 className="text-3xl font-black text-slate-900 inline-flex items-center gap-3">
             <FaHistory className="text-emerald-500" /> Audit History
           </h1>
-          <p className="text-slate-500 text-sm font-bold uppercase tracking-wider mt-1 whitespace-nowrap">
-            Showing {data.length} Activities
+          <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mt-1">
+            Showing {filteredReports.length} Activities
           </p>
         </div>
+      </div>
 
-        {/* Search Input */}
-        <div className="relative h-12 w-64">
-          <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search logs..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="h-full w-full pl-11 pr-4 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none shadow-sm"
-          />
+      {/* Filter Toolbar */}
+      <div className="flex flex-row items-center justify-between gap-4 mb-8 bg-white p-3 rounded-3xl border border-slate-200 shadow-sm">
+        <div className="flex-1 max-w-sm">
+          <div className="relative">
+            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search logs..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="h-12 w-full pl-11 pr-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-emerald-50 focus:border-emerald-500 transition-all"
+            />
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Date Filter Group */}
-          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 h-12 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-2xl px-4 h-12">
             <div className="flex items-center gap-2">
               <input
                 type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                className="text-[10px] font-bold uppercase outline-none text-slate-600 cursor-pointer"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="text-[10px] font-black uppercase outline-none bg-transparent text-slate-600 cursor-pointer"
               />
               <span className="text-slate-300 text-xs font-bold">TO</span>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="text-[10px] font-bold uppercase outline-none text-slate-600 cursor-pointer"
+                className="text-[10px] font-black uppercase outline-none bg-transparent text-slate-600 cursor-pointer"
               />
             </div>
-            {(fromDate || endDate) && (
+            {(startDate || endDate) && (
               <button
                 onClick={clearDates}
-                className="ml-2 p-1.5 hover:bg-slate-100 rounded-full text-slate-400 hover:text-red-500 transition-colors"
-                title="Clear Dates"
+                className="cursor-pointer ml-2 p-1.5 hover:bg-white rounded-full text-slate-400 hover:text-red-500 transition-colors"
               >
                 <FaTimes size={10} />
               </button>
             )}
           </div>
 
-          {/* Export Dropdown */}
           <div className="relative h-12" ref={dropdownRef}>
             <button
               onClick={() => setShowExportDropdown(!showExportDropdown)}
-              className="h-full px-6 bg-emerald-600 text-white text-xs font-black rounded-xl hover:bg-emerald-700 transition-all shadow-lg flex items-center gap-3 uppercase cursor-pointer"
+              className="h-full px-6 bg-slate-900 text-white text-[10px] font-black rounded-2xl hover:bg-slate-800 transition-all shadow-lg flex items-center gap-3 uppercase cursor-pointer whitespace-nowrap"
             >
-              Export <FaChevronDown className={`transition-transform ${showExportDropdown ? "rotate-180" : ""}`} />
+              <FaFileExport className="text-emerald-400" /> Export <FaChevronDown className={`text-[8px] transition-transform ${showExportDropdown ? "rotate-180" : ""}`} />
             </button>
 
             <AnimatePresence>
@@ -117,21 +170,16 @@ const AuditView = ({ setView }) => {
                   exit={{ opacity: 0, y: 10 }}
                   className="absolute right-0 mt-3 w-52 bg-white border border-slate-100 rounded-2xl shadow-2xl z-50 overflow-hidden"
                 >
-                  {[
-                    { id: 'json', icon: <FaCode className="text-blue-500" />, label: 'JSON Data' },
-                    { id: 'excel', icon: <FaFileExcel className="text-green-600" />, label: 'Excel Sheet' },
-                    { id: 'pdf', icon: <FaFilePdf className="text-red-500" />, label: 'PDF Document' },
-                  ].map((opt) => (
+                  {['json', 'excel', 'pdf'].map((opt) => (
                     <button
-                      key={opt.id}
+                      key={opt}
                       onClick={() => {
-                        // Pass format first, then data
-                        handleExport(opt.id, data);
+                        handleExport(opt, filteredReports);
                         setShowExportDropdown(false);
                       }}
-                      className="w-full px-5 py-4 text-left text-[11px] font-black text-slate-600 hover:bg-slate-50 flex items-center gap-3 border-b border-slate-50 last:border-0 cursor-pointer transition-colors"
+                      className="w-full px-5 py-4 text-left text-[11px] font-black text-slate-600 hover:bg-slate-50 flex items-center gap-3 border-b border-slate-50 last:border-0 cursor-pointer transition-colors uppercase"
                     >
-                      {opt.icon} {opt.label}
+                      Save as {opt}
                     </button>
                   ))}
                 </motion.div>
@@ -155,37 +203,32 @@ const AuditView = ({ setView }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {data.map((log, i) => (
-                <tr key={log.id || i} className="hover:bg-slate-50/50 transition-colors h-20">
-                  <td className="px-6 py-4 text-center whitespace-nowrap font-bold text-xs tabular-nums text-slate-900">
-                    {log.reportIdDisplay || "—"}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex justify-center">
-                      <span className={`inline-flex items-center justify-center w-44 py-2 rounded-lg text-[10px] font-black uppercase border whitespace-nowrap ${log.action?.includes("DELETE") ? "bg-red-50 text-red-600 border-red-100" :
-                        log.action?.includes("CREATE") ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
-                          "bg-amber-50 text-amber-600 border-amber-100"
-                        }`}>
-                        {log.action || "UPDATE"}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-slate-400 italic text-[11px] wrap-break-word text-center">
-                      {log.oldValue || "—"}
-                    </p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-slate-700 font-bold text-[11px] wrap-break-word text-center">
-                      {log.newValue || "—"}
-                    </p>
-                  </td>
-                  <td className="px-6 py-4 text-center whitespace-nowrap text-slate-400 text-[11px] tabular-nums">
-                    {log.timestamp || "—"}
-                  </td>
-                </tr>
-              ))}
-              {data.length === 0 && (
+              {currentItems.length > 0 ? (
+                currentItems.map((log, i) => (
+                  <tr key={log.id || i} className="hover:bg-slate-50/50 transition-colors h-20">
+                    <td className="px-6 py-4 text-center whitespace-nowrap font-bold text-xs tabular-nums text-slate-900">
+                      {log.reportIdDisplay || "—"}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex justify-center">
+                        <span className={`inline-flex items-center justify-center w-44 py-2 rounded-lg text-[10px] font-black uppercase border whitespace-nowrap ${log.action?.includes("DELETE") ? "bg-red-50 text-red-600 border-red-100" :
+                          log.action?.includes("CREATE") ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+                            "bg-amber-50 text-amber-600 border-amber-100"
+                          }`}>
+                          {log.action || "UPDATE"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <p className="text-slate-400 italic text-[11px] truncate px-2">{log.oldValue || "—"}</p>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <p className="text-slate-700 font-bold text-[11px] truncate px-2">{log.newValue || "—"}</p>
+                    </td>
+                    <td className="px-6 py-4 text-center text-slate-400 text-[11px] tabular-nums">{log.timestamp || "—"}</td>
+                  </tr>
+                ))
+              ) : (
                 <tr>
                   <td colSpan="5" className="px-6 py-20 text-center text-slate-400 font-bold text-sm uppercase tracking-widest">
                     No logs found
@@ -196,6 +239,51 @@ const AuditView = ({ setView }) => {
           </table>
         </div>
       </div>
+
+      {/* --- PAGINATION CONTROLS --- */}
+      {totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 px-2">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+            Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredReports.length)} of {filteredReports.length} Activities
+          </p>
+
+          <div className="flex items-center gap-2">
+            {/* Previous Button */}
+            <button
+              onClick={() => paginate(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-all shadow-sm disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <FaChevronLeft size={12} />
+            </button>
+
+            {/* Page Numbers */}
+            <div className="flex gap-1">
+              {[...Array(totalPages)].map((_, i) => (
+                <button
+                  key={i + 1}
+                  onClick={() => paginate(i + 1)}
+                  className={`w-10 h-10 flex items-center justify-center rounded-xl font-black text-xs transition-all cursor-pointer shadow-sm ${currentPage === i + 1
+                    ? "bg-slate-900 text-white shadow-lg scale-110"
+                    : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+                    }`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+
+            {/* Next Button */}
+            <button
+              onClick={() => paginate(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-all shadow-sm disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <FaChevronRight size={12} />
+            </button>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 };
